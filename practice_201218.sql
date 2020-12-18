@@ -40,5 +40,5 @@ insert into tbl_files values(2, 'c:\music.mp3');
 insert into tbl_files values(3, 'c:\documents\resume.hwp');
 commit;
 select fileno "파일번호",
-       substr(filepath, instr(filepath,'\',-1)) "파일명"
+       substr(filepath, instr(filepath,'\',-1)+1) "파일명"
 from tbl_files;

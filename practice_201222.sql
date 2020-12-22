@@ -56,13 +56,22 @@ from employee;
 --단, 생년월일은 주민번호에서 추출해서,
 --0000년 00월 00일로 출력되게 함.
 --나이는 주민번호에서 추출해서 날짜데이터로 변환한 다음, 계산함
+select emp_no from employee;
+select extract(month from sysdate) from dual;
 select emp_name 직원명, dept_code 부서코드,
-    substr(emp_no,1,6) 생년월일, 
-    extract(year from sysdate) - 
-    (case
+    case
     when substr(emp_no,8,1) in ('1','2') then 1900
     else 2000
-    end + substr(emp_no,1,2))+1 "나이(만)"
+    end + substr(emp_no,1,2)||'년' || substr(emp_no,3,2)||'월' || substr(emp_no,5,2)||'일' "생년월일",
+    extract(year from sysdate) - (case
+    when substr(emp_no,8,1) in ('1','2') then 1900
+    else 2000
+    end + substr(emp_no,1,2))
+     - (case
+        when (extract(month from sysdate) - substr(emp_no,3,2)=0) and (extract(day from sysdate) - substr(emp_no,5,2)<0) then 1
+        when (extract(month from sysdate) - substr(emp_no,3,2)<0) then 1
+        else 0
+    end) "만 나이"
 from employee;
 
 --11. 직원들의 입사일로부터 년도만 가지고, 

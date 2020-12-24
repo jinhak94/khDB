@@ -115,7 +115,8 @@ select decode(quit_yn, 'N', '재직중', 'Y', '퇴직') 재직여부, count(quit
 from employee
 group by decode(quit_yn, 'N', '재직중', 'Y', '퇴직');
 
-
+select count(decode(quit_yn, 'N', '1', null)) 재직중, count(decode(quit_yn, 'Y','1', null)) 퇴사
+from employee;
 
 
 

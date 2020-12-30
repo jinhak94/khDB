@@ -65,17 +65,7 @@ select student_no 학번, student_name 성명
 from tb_student
 where  extract(year from entrance_date)
         - (decode(substr(student_ssn,8,1),'1',1900,'2',1900,2000)
-        + substr(student_ssn,1,2))
-       -(case
-            when (extract(month from entrance_date) 
-            - substr(student_ssn,3,2)=0) 
-            and (extract(day from entrance_date) 
-            - substr(student_ssn,5,2)<0) then 1
-            
-            when (extract(month from entrance_date) 
-            - substr(student_ssn,3,2)<0) then 1
-        else 0
-    end) = 19; -- 입학할 당시의 만 나이가 19살인지 확인
+        + substr(student_ssn,1,2)) > 19;
 
 --6. 2020년 크리스마스는 무슨 요일인가?
 select to_char(to_date('20201225'),'day') 요일
@@ -185,6 +175,7 @@ order by 1;
 --15. 학번이 A112113인 김고운 학생의 년도, 학기 별 평점과
 --    년도 별 누적 평점, 총 평점을 구하는 SQL 문을 작성하시오.
 --    (단, 평점은 소수점 1자리까지만 반올림하여 표시한다.)
+
 select decode(grouping(substr(term_no, 1,4)), 0, substr(term_no, 1,4)) 년도, 
        decode(grouping(substr(term_no, 5,2)), 0, substr(term_no, 5,2), ' ') 학기,
        round(avg(point),1) 평점
@@ -199,3 +190,21 @@ order by 1;
 
 
 
+select entrance_date from tb_student;
+
+SELECT STUDENT_NO, STUDENT_NAME
+FROM (SELECT S.*, (DECODE(SUBSTR(ENTRANCE_DATE,1,1),'0',20,'9',19) 
+    || SUBSTR(ENTRANCE_DATE,1,2)) 입학년도,
+      (decode(SUBSTR(STUDENT_SSN,8,1),'1',19,'2',19,20) || 
+      SUBSTR(STUDENT_SSN,1,2)) 생년월일 FROM TB_STUDENT S) S
+where S.입학년도 - S.생년월일 = 19;
+
+select student_no, student_name
+from tb_student
+where extract(year from entrance_date)
+              -(decode(substr(student_ssn,8,1),1,'1900',2,'1900','2000')
+              +substr(student_ssn,1,2)) > 19;
+              
+              
+              
+              

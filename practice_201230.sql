@@ -88,6 +88,13 @@ from dual;
 --   to_date('49/10/11', 'RR/MM/DD')은 
 --   각각 몇 년 몇 월 몇일을 의미할까?
 
+select to_char(TO_DATE('99/10/11'),'YYYY"년"MM"월"DD"일"') "99/10/11,YY/MM/DD",
+       to_char(TO_DATE('49/10/11'),'RRRR"년"MM"월"DD"일"') "49/10/11,YY/MM/DD",
+       to_char(TO_DATE('99/10/11'),'YYYY"년"MM"월"DD"일"') "99/10/11,RR/MM/DD",
+       to_char(TO_DATE('49/10/11'),'RRRR"년"MM"월"DD"일"') "49/10/11,RR/MM/DD"
+from dual; -- 1999
+
+
 select extract(year from to_date('99/10/11', 'YY/MM/DD'))||'년' ||
        extract(month from to_date('99/10/11', 'YY/MM/DD'))||'월'||
        extract(day from to_date('99/10/11', 'YY/MM/DD'))||'일' "99/10/11,YY/MM/DD",

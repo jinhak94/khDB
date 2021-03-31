@@ -81,14 +81,14 @@ from employee;
 --> decode, sum 사용
 
 -- 더 나은 방식 있는지 고민...
-select sum(decode(substr(hire_date,1,2),'98',1)) "1998년",
-       sum(decode(substr(hire_date,1,2),'99',1)) "1999년",
-       sum(decode(substr(hire_date,1,2),'00',1)) "2000년",
-       sum(decode(substr(hire_date,1,2),'01',1)) "2001년",
-       sum(decode(substr(hire_date,1,2),'02',1)) "2002년",
-       sum(decode(substr(hire_date,1,2),'03',1)) "2003년",
-       sum(decode(substr(hire_date,1,2),'04',1)) "2004년",
-       sum(decode(substr(hire_date,1,2),'전체',1,1)) "전체직원수"
+select sum(nvl(decode(substr(hire_date,1,2),'98',1),0)) "1998년",
+       sum(nvl(decode(substr(hire_date,1,2),'99',1),0)) "1999년",
+       sum(nvl(decode(substr(hire_date,1,2),'00',1),0)) "2000년",
+       sum(nvl(decode(substr(hire_date,1,2),'01',1),0)) "2001년",
+       sum(nvl(decode(substr(hire_date,1,2),'02',1),0)) "2002년",
+       sum(nvl(decode(substr(hire_date,1,2),'03',1),0)) "2003년",
+       sum(nvl(decode(substr(hire_date,1,2),'04',1),0)) "2004년",
+       sum(nvl(decode(substr(hire_date,1,2),'전체',1,1),0)) "전체직원수"
 from employee;
 
 --12. 부서코드가 D5이면 총무부, D6이면 기획부, 

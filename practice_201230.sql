@@ -78,6 +78,9 @@ from dual;
 --   to_date('49/10/11', 'RR/MM/DD')은 
 --   각각 몇 년 몇 월 몇일을 의미할까?
 
+--YY : 현재년도기준으로 한세기(00~99)에서 판단.
+--RR : 현재년도 기준으로 한세기(50~49)에서 판단.
+
 select to_char(TO_DATE('99/10/11'),'YYYY"년"MM"월"DD"일"') "99/10/11,YY/MM/DD",
        to_char(TO_DATE('49/10/11'),'RRRR"년"MM"월"DD"일"') "49/10/11,YY/MM/DD",
        to_char(TO_DATE('99/10/11'),'YYYY"년"MM"월"DD"일"') "99/10/11,RR/MM/DD",
@@ -181,29 +184,12 @@ select decode(grouping(substr(term_no, 1,4)), 0, substr(term_no, 1,4)) 년도,
        round(avg(point),1) 평점
 from tb_grade
 where student_no = 'A112113'
-group by rollup(substr(term_no, 1,4), substr(term_no, 5,2))
-order by 1;
+group by rollup(substr(term_no, 1,4), substr(term_no, 5,2));
 
 
 
 
 
-
-
-select entrance_date from tb_student;
-
-SELECT STUDENT_NO, STUDENT_NAME
-FROM (SELECT S.*, (DECODE(SUBSTR(ENTRANCE_DATE,1,1),'0',20,'9',19) 
-    || SUBSTR(ENTRANCE_DATE,1,2)) 입학년도,
-      (decode(SUBSTR(STUDENT_SSN,8,1),'1',19,'2',19,20) || 
-      SUBSTR(STUDENT_SSN,1,2)) 생년월일 FROM TB_STUDENT S) S
-where S.입학년도 - S.생년월일 = 19;
-
-select student_no, student_name
-from tb_student
-where extract(year from entrance_date)
-              -(decode(substr(student_ssn,8,1),1,'1900',2,'1900','2000')
-              +substr(student_ssn,1,2)) > 19;
               
               
               

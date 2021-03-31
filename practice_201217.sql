@@ -8,3 +8,9 @@ from employee;
 --2. 
 select emp_name, hire_date, round(sysdate-hire_date)
 from employee;
+
+commit;
+
+
+
+

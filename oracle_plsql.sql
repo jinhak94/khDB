@@ -429,7 +429,6 @@ end;
 create table emp_copy
 as
 select * from employee;
-drop table emp_copy;
 -- in 프로시져로 매개인자 전달용(기본값)
 -- out 프로시져에서 호출부로 전달용
 -- inout in + out 
@@ -465,6 +464,7 @@ end;
 /
 
 --익명블럭에서 프로시져 호출
+set serveroutput on;
 declare
     name emp_copy.emp_name%type;
     phone emp_copy.phone%type;
@@ -489,6 +489,8 @@ add constraint pk_job_copy primary key(job_code)
 modify job_code varchar2(5)
 modify job_name not null;
 
+alter table job_copy
+modify job_code varchar2(5);
 create or replace procedure proc_upsert_job_copy(
     p_job_code in job_copy.job_code%type,
     p_job_name in job_copy.job_name%type
@@ -522,4 +524,292 @@ end;
 execute proc_upsert_job_copy('J8', '인턴');
 execute proc_upsert_job_copy('J8', '수습');
 select * from job_copy;
+select * from user_procedures;
+commit;
 
+--============================================================
+-- CURSOR
+--============================================================
+--SQL문 실행결과 ResultSet을 가리키는 포인터
+--한행 이상인 경우도 행단위로 순차적으로 접근할 수 있다.
+
+-- 커서의 처리과정
+-- OPEN -- FETCH -- CLOSE
+
+--암묵적커서 : 모든 SQL문이 실행됨과 동시에 암묵적 커서가 자동으로 생성됨. OPEN-FETCH-CLOSE과정 자동처리
+--명시적커서 : 사용자가 직접 쿼리결과를 제어하기 위해 명시적으로 선언한 커서.
+
+declare
+    emp_row employee%rowtype;
+    --커서선언
+    --1. 파라미터 없는 커서
+    cursor emp_cursor is
+    select * from employee;
+    --2. 파라미터 있는 커서
+    cursor dept_emp_cursor(p_dept_code employee.dept_code%type)
+    is
+    select * from employee where dept_code = p_dept_code;
+begin
+    open emp_cursor;
+    loop
+        fetch emp_cursor into emp_row;
+        exit when emp_cursor%notfound; --더이상 행이 존재하지 않는 경우
+        dbms_output.put_line(emp_row.emp_id || ' : ' || emp_row.emp_name);
+    end loop;
+    --자원반납
+    close emp_cursor;
+    
+    dbms_output.new_line; --공백
+    open dept_emp_cursor('&부서코드');
+    loop
+        fetch dept_emp_cursor into emp_row;
+        exit when dept_emp_cursor%notfound; --더이상 행이 존재하지 않는 경우
+        dbms_output.put_line(emp_row.emp_id || ' : ' || emp_row.emp_name || '(' || emp_row.dept_code || ')');    
+    end loop;
+    close dept_emp_cursor;
+end;
+/
+
+--for..in문을 사용한 cursor 제어
+--1. open..close을 자동 처리
+--2. 모든행을 가져왔다면 자동으로 반복문 종료. exit구문 불필요
+--3. 커서의 행(전체컬럼)에 해당하는 변수 선언. 별도의 변수 선언 불필요
+declare
+    --emp_row employee%rowtype;(별도 변수 선언 불필요)
+    --커서선언
+    --1. 파라미터 없는 커서
+    cursor emp_cursor is
+    select * from employee;
+    --2. 파라미터 있는 커서
+    cursor dept_emp_cursor(p_dept_code employee.dept_code%type)
+    is
+    select * from employee where dept_code = p_dept_code;
+begin
+    for emp_row in emp_cursor loop
+        dbms_output.put_line(emp_row.emp_id || ' : ' || emp_row.emp_name);
+    end loop;
+    
+    dbms_output.new_line;
+    
+    for emp_row in dept_emp_cursor('&부서코드') loop
+        dbms_output.put_line(emp_row.emp_id || ' : ' || emp_row.emp_name || '(' || emp_row.dept_code || ')');    
+    end loop;
+end;
+/
+
+--@실습문제 : 직급명을 입력받고, 해당 직급의 모든 사원 조회(사번, 사원명, 직급명)하는 프로시져 생성
+--익명블럭에서 proc_emp_job('대리') 호출.
+--커서 cs_emp_job 사용할 것
+
+declare
+    
+begin
+    proc_emp_job('대리');
+end;
+/
+
+desc job;
+
+create or replace procedure proc_emp_job(p_job_name job.job_name%type)
+is
+    cursor cs_emp_job
+    is
+    select *
+    from employee E join job J using(job_code)
+    where J.job_name = p_job_name;
+begin
+    for emp_row in cs_emp_job loop
+        dbms_output.put_line(emp_row.emp_id || ' : ' || emp_row.emp_name || '(' || emp_row.job_name || ')');    
+    end loop;
+end;
+/
+execute proc_emp_job('대리');
+
+--=============================================================
+-- TRIGGER
+--=============================================================
+--방아쇠. 특정이벤트, DDL, DML이 실행되었을 때, 자동으로 실행될 구문을 저장한 객체
+--1. DML Trigger : 특정 테이블에 대해서 insert/update/delete 구문 실행시 자동으로 저장된 구문을 실행
+--2. DDL Trigger : 
+--3. Logon/Logoff Trigger :
+/*
+문법
+create or replace trigger 트리거명
+    before | after -- 원dml문 실행전/후 트리거 실행
+    insert | update | delete on 테이블 -- (복수개는 or로 묶을수도 있음)
+    for each row    --행 level, 문장 level(기본값)
+begin
+    --실행로직
+end;
+/
+*/
+
+desc users;
+
+-- 의사 레코드 pseudo record(임시 레코드)
+--for each row 행레벨 트리거인 경우에 한해서 사용 가능하다
+/*
+            :old        :new
+----------------------------------------------------
+
+insert      null        새로 추가된 행
+update      변경전 행    변경후 행
+delete      삭제전 행    null
+*/
+create or replace trigger trg_users
+    before 
+    insert or update or delete on users -- update of 컬럼명(특정 행에 대한 변경만 처리 가능)
+    for each row
+begin
+    if inserting then
+        --사용자가 등록될때마다 로그처리
+        insert into user_log(no, log)
+        values (
+            user_log_no.nextval,
+            :new.no || ' - ' || :new.name || '이 등록했습니다.'
+        );
+    elsif updating then
+        --사용자이름이 변경될때마다 로그처리
+        insert into user_log(no, log)
+        values (
+            user_log_no.nextval,
+            :new.no || '번 회원의 이름이 [' || :old.name || ']에서 [' || :new.name || ']로 변경되었습니다.'
+        );
+    elsif deleting then
+        --회원 탈퇴시 로그처리
+        insert into user_log(no, log)
+        values(
+            user_log_no.nextval,
+            :old.no || '번 회원(' || :old.name || ')님이 탈퇴하셨습니다.'
+        );
+        
+    end if;
+    
+    --트리거에서는 트랜잭션 처리할 수 없다. 원 dml문과 같은 트랜잭션에 자동으로 속한다.
+end;
+/
+
+create table user_log(
+    no number primary key,
+    log varchar2(1000),
+    log_date date default sysdate
+);
+create sequence user_log_no;
+
+--test
+insert into users values(3, '신사임당');
+insert into users values(4, '윤봉준');
+insert into users values(5, '유관순');
+update users set name = '고길동' where no = 5;
+delete from users where no = 5;
+select * from users;
+select * from user_log;
+
+-- before & after 옵션
+-- trigger로 처리해야 하는 작업이 fk참조를 해야한다면, after 옵션을 고려해야 한다.(무결성 위반하지 않기 위해)
+-- (before after는 부모 테이블과 자식 테이블의 관계에 대해서 작성할 때 사용)
+create table parent (
+    id varchar2(100) primary key
+);
+create table child (
+    id varchar2(100) primary key,
+    parent_id varchar2(100),
+    constraint fk_parent_id foreign key(parent_id) references parent(id)
+);
+select * from parent;
+select * from child;
+
+create or replace trigger trg_parent_child
+    after
+    insert on parent
+    for each row
+begin
+    insert into child
+    values(:new.id || 123, :new.id);
+end;
+/
+
+insert into parent values('abc');
+
+--상품재고관리
+--1. 상품테이블(재고숫자)
+--2. 입출고테이블(입출고수량)
+create table product(
+    pid number primary key,
+    pname varchar2(500) not null,
+    price number,
+    stock number default 0
+);
+
+create table product_io(
+    ioid number primary key,
+    pid number references product(pid), --foreign key 컬럼레벨 작성시 references 절만 작성
+    amount number,
+    status char(1) check(status in ('I', 'O')),
+    io_date date default sysdate
+);
+
+create sequence seq_product_pid;
+create sequence seq_product_ioid;
+
+insert into product
+values(seq_product_pid.nextval, 'Galaxy21', 1000000, default);
+
+insert into product
+values(seq_product_pid.nextval, 'iPhone12', 1100000, default);
+
+select * from product;
+select * from product_io;
+
+-- product_io에 입출고 데이터를 쌓음. 
+-- 자동으로 트리거가 product에 있는 stock 컬럼을 update
+
+create or replace trigger trg_product_stock
+    before -- 갱신 작업이 아니고 수정이므로, before, after 상관 없다.
+    insert on product_io
+    for each row
+begin
+    if :new.status = 'I' then
+    --입고
+    update product set stock = stock + :new.amount where pid = :new.pid;
+    else
+    --출고
+    update product set stock = stock - :new.amount where pid = :new.pid;
+    end if;
+end;
+/
+
+insert into product_io values(seq_product_ioid.nextval, 1, 10, 'I', default); 
+insert into product_io values(seq_product_ioid.nextval, 1, 5, 'O', default); 
+
+-- @실습문제
+-- EMPLOYEE테이블의 퇴사자관리를 별도의 테이블 TBL_EMP_QUIT에서 하려고 한다.
+-- 다음과 같이 TBL_EMP_JOIN, TBL_EMP_QUIT테이블을 생성하고, TBL_EMP_JOIN에서 DELETE시 자동으로 퇴사자 데이터가 
+-- TBL_EMP_QUIT에 INSERT되도록 트리거를 생성하라.
+
+CREATE TABLE TBL_EMP_JOIN
+AS
+SELECT EMP_ID, EMP_NAME, EMP_NO, EMAIL, PHONE, DEPT_CODE, JOB_CODE, SAL_LEVEL, SALARY, BONUS, MANAGER_ID, HIRE_DATE
+FROM EMPLOYEE
+WHERE QUIT_YN = 'N';
+
+CREATE TABLE TBL_EMP_QUIT
+AS
+SELECT EMP_ID, EMP_NAME, EMP_NO, EMAIL, PHONE, DEPT_CODE, JOB_CODE, SAL_LEVEL, SALARY, BONUS, MANAGER_ID, HIRE_DATE, QUIT_DATE
+FROM EMPLOYEE
+WHERE QUIT_YN = 'Y';
+
+SELECT * FROM TBL_EMP_JOIN;
+SELECT * FROM TBL_EMP_QUIT;
+
+create or replace trigger trg_employee_quit
+    after
+    delete on tbl_emp_join
+    for each row
+begin
+    insert into tbl_emp_quit
+    values(:old.emp_id, :old.emp_name, :old.emp_no, :old.email, :old.phone, :old.dept_code, :old.job_code, :old.sal_level, :old.salary, :old.bonus, :old.manager_id, :old.hire_date, sysdate);
+end;
+/
+
+delete from tbl_emp_join where emp_id = 200;
